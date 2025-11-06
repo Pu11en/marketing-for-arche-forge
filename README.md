@@ -38,3 +38,43 @@ vercel login
 vercel --prod
 ```
 
+
+## Local Development
+
+This static HTML website can be served locally using multiple methods:
+
+### Option 1: Using npm (Recommended)
+
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Start the local server:
+   ```
+   npm start
+   ```
+   
+   This will start the server on port 8080 and automatically open your browser.
+
+### Option 2: Using Python's Built-in Server
+
+If you have Python installed:
+
+1. For Python 3.x:
+   ```
+   python -m http.server 8000
+   ```
+
+2. For Python 2.x:
+   ```
+   python -m SimpleHTTPServer 8000
+   ```
+
+3. Open your browser and navigate to `http://localhost:8000`
+
+### Option 3: Using VS Code's Live Server Extension
+
+1. Install the "Live Server" extension by Ritwick Dey in VS Code
+2. Right-click on `index.html` and select "Open with Live Server"
+3. The site will open in your browser with auto-reload functionality

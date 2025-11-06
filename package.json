@@ -1,0 +1,20 @@
+{
+  "name": "marketing-for-forge",
+  "version": "1.0.0",
+  "description": "Strategic Marketing Operating System - Static HTML Website",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8080 -o",
+    "dev": "http-server -p 8080 -o"
+  },
+  "keywords": [
+    "marketing",
+    "static-site",
+    "html"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

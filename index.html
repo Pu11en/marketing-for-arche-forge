@@ -1,41 +1,703 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Strategic Marketing Operating System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-  <style>
-    body { font-family: 'Source Sans Pro', sans-serif; margin:0; padding:0; background:#f5f7fa; color:#2c3e50; }
-    header { padding: 32px 16px; text-align:center; background:#fff; border-bottom:1px solid #e6e8ec; }
-    h1 { margin:0; color:#1a73e8; }
-    main { max-width: 960px; margin: 24px auto; background:#fff; border:1px solid #e6e8ec; border-radius:8px; padding:24px; }
-    .note { color:#5f6368; font-size:14px; }
-    .cta { display:inline-block; margin-top:16px; background:#1a73e8; color:#fff; text-decoration:none; padding:10px 14px; border-radius:6px; }
-    footer { text-align:center; color:#5f6368; font-size:12px; padding:24px; }
-  </style>
-  <meta name="description" content="Strategic Marketing Operating System" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Marketing Operating System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Source Sans Pro', sans-serif; background-color: #f5f7fa; color: #2c3e50; overflow-x: hidden; overflow-y: auto; }
+        .slide { width: 100%; min-height: 100vh; padding: 20px; margin: 0 auto; background-color: #ffffff; overflow-x: auto; overflow-y: auto; display: flex; flex-direction: column; }
+        .slide-header { padding: 20px 40px; text-align: center; }
+        .slide-title { font-size: 40px; font-weight: 700; color: #1a73e8; margin-bottom: 10px; }
+        .strategy-banner { background-color: #e8f0fe; color: #1a73e8; padding: 12px 20px; border-radius: 6px; margin: 0 auto 20px; max-width: 800px; text-align: center; font-weight: 600; font-size: 16px; border-left: 4px solid #1a73e8; border-right: 4px solid #1a73e8; }
+        .flowchart-container { flex-grow: 1; display: flex; flex-direction: column; padding: 0 40px 40px; justify-content: flex-start; }
+        .flowchart-row { display: flex; justify-content: center; margin-bottom: 20px; position: relative; }
+        .flowchart-node { background-color: #e8f0fe; border: 2px solid #1a73e8; border-radius: 8px; padding: 16px 24px; text-align: center; font-weight: 600; font-size: 18px; color: #1a73e8; position: relative; z-index: 2; transition: all 0.3s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 180px; }
+        .flowchart-node:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(26, 115, 232, 0.15); }
+        .flowchart-node.main { background-color: #1a73e8; color: white; font-size: 22px; padding: 18px 36px; min-width: 240px; }
+        .flowchart-node.secondary { background-color: #4285f4; color: white; font-size: 20px; }
+        .flowchart-node.tertiary { background-color: #8ab4f8; color: white; font-size: 18px; }
+        .node-group { display: flex; justify-content: center; gap: 30px; margin: 0 auto; flex-wrap: wrap; }
+        .connector { position: absolute; background-color: #1a73e8; z-index: 1; }
+        .connector-vertical { width: 3px; left: 50%; transform: translateX(-50%); }
+        .connector-horizontal { height: 3px; top: 50%; transform: translateY(-50%); }
+        .flowchart-branch { display: flex; flex-direction: column; align-items: center; position: relative; }
+        .branch-connector { position: absolute; width: 3px; background-color: #1a73e8; z-index: 1; }
+        .branch-connector-left { left: 50%; height: 20px; top: 100%; }
+        .branch-connector-right { left: 50%; height: 20px; bottom: 100%; }
+        .branch-horizontal { position: absolute; height: 3px; background-color: #1a73e8; z-index: 1; }
+        .branch-horizontal-top { width: 100%; top: 0; }
+        .branch-horizontal-bottom { width: 100%; bottom: 0; }
+        .icon-container { display: flex; justify-content: center; margin-top: 8px; }
+        .material-icons { font-size: 24px; color: #1a73e8; }
+        .main-node .material-icons { color: white; }
+        .secondary-node .material-icons { color: white; }
+        .tertiary-node .material-icons { color: white; }
+        .highlight { font-weight: 700; font-size: 22px; color: #1a73e8; }
+        .dual-strategy-container { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; flex-wrap: wrap; }
+        .strategy-column { display: flex; flex-direction: column; align-items: center; width: 45%; min-width: 300px; }
+        .strategy-label { font-size: 16px; font-weight: 600; color: #4285f4; margin-bottom: 10px; text-align: center; }
+        .node-details { background-color: #f0f7ff; border: 1px solid #8ab4f8; border-radius: 6px; padding: 12px; margin-top: 10px; font-size: 14px; color: #4285f4; text-align: left; width: 100%; max-width: 280px; }
+        .node-details ul { list-style-type: none; padding-left: 5px; }
+        .node-details li { margin-bottom: 6px; display: flex; align-items: flex-start; }
+        .node-details li:before { content: "•"; color: #4285f4; font-weight: bold; display: inline-block; width: 1em; margin-right: 5px; }
+        .expanded-node { position: relative; }
+        .node-details { display: block; }
+        .expanded-node-container { display: flex; flex-direction: column; align-items: center; }
+        .node-details-subtitle { font-weight: 600; color: #1a73e8; margin-top: 8px; margin-bottom: 4px; font-size: 15px; }
+        .smaller-node { min-width: 160px; font-size: 16px; }
+        .youtube-container { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .youtube-nodes { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        .cinematic-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .cinematic-nodes { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+        .priority-tag { position: absolute; top: -8px; right: -8px; width: 16px; height: 16px; border-radius: 50%; z-index: 3; }
+        .priority-high { background-color: #ea4335; }
+        .priority-medium { background-color: #fbbc04; }
+        .priority-low { background-color: #9e9e9e; }
+        .seo-flywheel-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .independent-module { margin: 15px auto; padding: 15px; border-radius: 8px; background-color: #f8f9fa; border: 1px solid #e0e0e0; width: 100%; max-width: 800px; display: flex; flex-direction: column; align-items: center; }
+        .module-header { display: flex; align-items: center; margin-bottom: 10px; }
+        .module-title { font-weight: 600; font-size: 18px; color: #1a73e8; margin-left: 10px; }
+        .module-details { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; width: 100%; }
+        .module-detail { margin: 5px 10px; font-size: 14px; color: #5f6368; }
+        .module-detail-label { font-weight: 600; color: #4285f4; }
+        .static-note { font-size: 14px; color: #5f6368; font-style: italic; margin-top: 5px; text-align: center; }
+        .horizontal-lanes { display: flex; flex-direction: column; width: 100%; gap: 30px; }
+        .lane { display: flex; justify-content: space-around; align-items: flex-start; padding: 10px 0; position: relative; }
+        .lane-label { position: absolute; left: -120px; top: 50%; transform: translateY(-50%); font-weight: 600; color: #4285f4; font-size: 14px; width: 100px; text-align: right; }
+        .lane-connector { position: absolute; width: 100%; height: 2px; background-color: #e0e0e0; top: 50%; left: 0; z-index: 0; }
+        .lane-node { z-index: 2; position: relative; }
+        .lane-connector-vertical { position: absolute; width: 2px; background-color: #1a73e8; z-index: 1; left: 50%; transform: translateX(-50%); }
+        .content-lanes { display: flex; justify-content: space-around; width: 100%; margin-bottom: 30px; }
+        .content-lane { width: 45%; position: relative; }
+        .content-lane-label { position: absolute; top: -25px; left: 0; font-weight: 600; color: #4285f4; font-size: 14px; }
+        .output-lanes { display: flex; justify-content: space-around; width: 100%; margin: 30px 0; }
+        .output-lane { width: 45%; position: relative; }
+        .output-lane-label { position: absolute; top: -25px; left: 0; font-weight: 600; color: #4285f4; font-size: 14px; }
+        .platform-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin: 20px 0; }
+        .platform-node { width: 220px; position: relative; }
+        .platform-description { font-size: 13px; color: #5f6368; text-align: left; margin-top: 8px; padding: 8px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #4285f4; }
+        .tag { display: inline-block; padding: 2px 6px; background-color: #e8f0fe; color: #1a73e8; border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 5px; }
+        .system-tag { position: absolute; top: -10px; right: 10px; background-color: #4285f4; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .input-connector { position: absolute; top: -20px; left: 50%; width: 3px; height: 20px; background-color: #1a73e8; transform: translateX(-50%); }
+        .input-connector::before { content: ''; position: absolute; top: 0; left: 50%; width: 10px; height: 10px; background-color: #1a73e8; border-radius: 50%; transform: translateX(-50%); }
+        .input-label { position: absolute; top: -40px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #4285f4; white-space: nowrap; }
+        .b2c-tag { position: absolute; top: -10px; left: 10px; background-color: #1a73e8; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; z-index: 3; }
+        .b2b-lane { border-top: 2px dashed #4285f4; padding-top: 20px; margin-top: 20px; }
+        .b2b-lane-label { position: absolute; left: 0; top: -10px; background-color: #ffffff; padding: 0 10px; font-weight: 600; color: #4285f4; font-size: 14px; }
+        .feedback-connector { position: absolute; background-color: #1a73e8; z-index: 1; }
+        .feedback-connector-left { left: 50%; height: 20px; top: -20px; }
+        .feedback-connector-horizontal { height: 3px; top: -10px; transform: translateY(-50%); }
+        .feedback-connector-vertical { width: 3px; left: 50%; transform: translateX(-50%); }
+        .data-flow-connector { position: absolute; background-color: #1a73e8; z-index: 1; opacity: 0.6; }
+        .data-flow-connector-vertical { width: 2px; left: 50%; transform: translateX(-50%); }
+        .data-flow-connector-horizontal { height: 2px; top: 50%; transform: translateY(-50%); }
+        .data-flow-arrow { position: absolute; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid #1a73e8; z-index: 1; }
+        .data-flow-arrow-down { transform: rotate(180deg); }
+        @media (max-width: 768px) {
+            .slide { padding: 10px; }
+            .slide-header { padding: 10px 20px; }
+            .slide-title { font-size: 30px; }
+            .flowchart-container { padding: 0 20px 20px; }
+            .node-group { gap: 15px; }
+            .strategy-column { width: 100%; margin-bottom: 20px; }
+            .dual-strategy-container { flex-direction: column; align-items: center; }
+            .lane-label { position: static; transform: none; text-align: center; margin-bottom: 5px; width: 100%; }
+            .content-lanes, .output-lanes { flex-direction: column; }
+            .content-lane, .output-lane { width: 100%; margin-bottom: 20px; }
+            .platform-container { flex-direction: column; align-items: center; }
+            .platform-node { width: 100%; max-width: 300px; }
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Strategic Marketing Operating System</h1>
-    <div class="note">Starter page for Vercel hosting</div>
-  </header>
-  <main>
-    <p>
-      This repository is set up for Vercel static hosting. Replace this content
-      with your full flowchart HTML when ready.
-    </p>
-    <p class="note">
-      Tip: keep a single <code>index.html</code> at the repo root for easiest static deploys.
-    </p>
-    <a class="cta" href="#">Explore</a>
-  </main>
-  <footer>
-    <span class="material-icons" aria-hidden="true">analytics</span>
-    &nbsp;Powered by Vercel
-  </footer>
+    <div class="slide">
+        <div class="slide-header">
+            <h1 class="slide-title">Strategic Marketing Operating System</h1>
+        </div>
+    <!-- STRATEGY BANNER -->
+    <div class="strategy-banner">
+        Primary Strategy: B2C (Direct to Consumer) — Personalized AI agents for individuals.<br>
+        Secondary Opportunity: B2B (System licensing for companies).
+    </div>
+    
+    <div class="flowchart-container">
+        <!-- WHY THIS FLOWCHART EXISTS -->
+        <div class="flowchart-row">
+            <div class="independent-module">
+                <div class="module-header">
+                    <i class="material-icons">info</i>
+                    <div class="module-title">WHY THIS FLOWCHART EXISTS</div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="module-details">
+                    <div class="module-detail"><span class="module-detail-label">Content Type:</span> Strategic Map</div>
+                    <div class="module-detail"><span class="module-detail-label">Target Audience:</span> Internal Team, Investors, Clients</div>
+                    <div class="module-detail"><span class="module-detail-label">Effort Level:</span> High (Design + Strategy)</div>
+                    <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Clarity, Credibility, Sales</div>
+                </div>
+                <div class="node-details">
+                    <div class="node-details-subtitle">Strategic Purpose</div>
+                    <ul>
+                        <li>Shows investors a credible and organized marketing plan</li>
+                        <li>Converts the flowchart itself into a marketable system for other SaaS startups</li>
+                        <li>Creates the foundation for a paid content strategy course</li>
+                        <li>Enables internal clarity around priority and delegation</li>
+                        <li>Builds a modular architecture for AI-powered agents and workflows</li>
+                        <li>Helps resource planning across growth tactics</li>
+                        <li>Allows future content automations to plug into the architecture cleanly</li>
+                        <li>Makes it easy to turn strategy into decks, SOPs, or sales assets</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PREPARED CAMPAIGN STRATEGY -->
+        <div class="flowchart-row">
+            <div class="expanded-node-container">
+                <div class="flowchart-node main main-node">
+                    PREPARED CAMPAIGN STRATEGY
+                    <div class="icon-container">
+                        <i class="material-icons">calendar_month</i>
+                    </div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="node-details">
+                    <ul>
+                        <li>Campaign-style approach enables consistent posting without daily content grind</li>
+                        <li>Repurposed content is "filler," used to maintain frequency</li>
+                        <li>High-effort content (Asset System videos) strategically clustered for impact</li>
+                        <li>Prepared content frees team to focus on replies, comments, audience growth</li>
+                        <li>Launches only when 30–60 days of content ready to go</li>
+                        <li>Daily creation = distraction; batch creation = scalable system</li>
+                        <li>Parasite System tactics viable when posting is automated</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- CORE NARRATIVE STRATEGY -->
+        <div class="flowchart-row">
+            <div class="flowchart-node main main-node">
+                CORE NARRATIVE STRATEGY
+                <div class="icon-container">
+                    <i class="material-icons">lightbulb</i>
+                </div>
+                <div class="priority-tag priority-high"></div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- CONTENT SYSTEMS HORIZONTAL LANES -->
+        <div class="content-lanes">
+            <!-- AI COPYWRITING SYSTEM -->
+            <div class="content-lane">
+                <div class="content-lane-label">AI COPYWRITING SYSTEM</div>
+                <div class="expanded-node-container">
+                    <div class="flowchart-node secondary secondary-node">
+                        AI COPYWRITING SYSTEM
+                        <div class="icon-container">
+                            <i class="material-icons">description</i>
+                        </div>
+                        <div class="priority-tag priority-medium"></div>
+                        <div class="b2c-tag">B2C Focus</div>
+                    </div>
+                    <div class="node-details">
+                        <ul>
+                            <li>SEO-friendly, multi-platform repurposed blog content</li>
+                            <li>Auto-generated using SoulPrint's AI copy system</li>
+                            <li>Context-aware copy based on SoulPrint prompts</li>
+                            <li>Volume content engine for consistent posting</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- HIGH-IMPACT TREND CONTENT -->
+            <div class="content-lane">
+                <div class="content-lane-label">HIGH-IMPACT TREND CONTENT</div>
+                <div class="cinematic-container">
+                    <div class="flowchart-node main main-node">
+                        HIGH-IMPACT TREND CONTENT
+                        <div class="icon-container">
+                            <i class="material-icons">movie</i>
+                        </div>
+                        <div class="priority-tag priority-high"></div>
+                        <div class="system-tag">MODERN COMMERCIAL</div>
+                        <div class="b2c-tag">B2C Focus</div>
+                    </div>
+                    
+                    <!-- TREND SYSTEM -->
+                    <div class="expanded-node-container">
+                        <div class="flowchart-node secondary secondary secondary-node">
+                            ASSET SYSTEM
+                            <div class="icon-container">
+                                <i class="material-icons">settings</i>
+                            </div>
+                            <div class="priority-tag priority-high"></div>
+                            <div class="b2c-tag">B2C Focus</div>
+                        </div>
+                        <div class="node-details">
+                            <ul>
+                                <li>Manual high-quality workflow</li>
+                                <li>Run by founder Drew</li>
+                                <li>Long build times (~10 hours/video)</li>
+                                <li>Outputs to TikTok and YouTube Shorts first</li>
+                                <li>Based on TikTok virality formats (Modern Edit Style/Creed Edit)</li>
+                                <li>Strategic clustering for maximum impact</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- CINEMATIC TACTICS -->
+                    <div class="cinematic-nodes">
+                        <div class="flowchart-node tertiary tertiary tertiary-node smaller-node">
+                            Trend-Based Visual Hooks
+                            <div class="icon-container">
+                                <i class="material-icons">auto_awesome</i>
+                            </div>
+                            <div class="priority-tag priority-medium"></div>
+                        </div>
+                        <div class="flowchart-node tertiary tertiary tertiary-node smaller-node">
+                            TikTok First Launch
+                            <div class="icon-container">
+                                <i class="material-icons">rocket_launch</i>
+                            </div>
+                            <div class="priority-tag priority-medium"></div>
+                        </div>
+                        <div class="flowchart-node tertiary tertiary tertiary-node smaller-node">
+                            Human-AI Synergy
+                            <div class="icon-container">
+                                <i class="material-icons">psychology</i>
+                            </div>
+                            <div class="priority-tag priority-medium"></div>
+                        </div>
+                        <div class="flowchart-node tertiary tertiary tertiary-node smaller-node">
+                            Repost if Viral
+                            <div class="icon-container">
+                                <i class="material-icons">share</i>
+                            </div>
+                            <div class="priority-tag priority-medium"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="branch-horizontal branch-horizontal-top" style="width: 90%; left: 5%;"></div>
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- SOCIAL MEDIA PLATFORMS -->
+        <div class="platform-container">
+            <!-- TIKTOK -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    TIKTOK
+                    <div class="icon-container">
+                        <i class="material-icons">music_video</i>
+                    </div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Viral trend content using Modern Edit style (Creed-style edits)</li>
+                        <li>Posted first to test traction</li>
+                        <li>If successful, repurposed on other platforms</li>
+                        <li>Uses the "Asset System" for high-effort content</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- YOUTUBE SHORTS -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    YOUTUBE SHORTS
+                    <div class="icon-container">
+                        <i class="material-icons">smart_display</i>
+                    </div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Mirrors TikTok strategy 1:1</li>
+                        <li>Trend edits go here after TikTok proves them</li>
+                        <li>Same Modern Edit style (Creed-style edits)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- TWITTER -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    TWITTER
+                    <div class="icon-container">
+                        <i class="material-icons">alternate_email</i>
+                    </div>
+                    <div class="priority-tag priority-medium"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Posts both AI copywritten content and cinematic edits</li>
+                        <li>Uses the Parasite System (commenting on ICP mutuals)</li>
+                        <li>Farm impressions through strategic engagement</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- REDDIT -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    REDDIT
+                    <div class="icon-container">
+                        <i class="material-icons">forum</i>
+                    </div>
+                    <div class="priority-tag priority-medium"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Uses Parasite System automation with subreddit targeting</li>
+                        <li>Long-form blog-style posts with strong hooks</li>
+                        <li>Needs Reddit API automation support</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- INSTAGRAM -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary-node">
+                    INSTAGRAM
+                    <div class="icon-container">
+                        <i class="material-icons">photo_camera</i>
+                    </div>
+                    <div class="priority-tag priority-medium"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Focus on high-quality carousels</li>
+                        <li>Built using Genesis prompts, Midjourney, and stylization</li>
+                        <li>SeaDream, NanaBanana, GPT Image for final polish</li>
+                        <li>Mostly educational or product-explainer style</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- LINKEDIN -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    LINKEDIN
+                    <div class="icon-container">
+                        <i class="material-icons">business</i>
+                    </div>
+                    <div class="priority-tag priority-low"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>Posts the modern cinematic commercials for credibility</li>
+                        <li>Network engagement through professional context</li>
+                        <li>Managed by the founder</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- BLUESKY -->
+            <div class="platform-node">
+                <div class="input-connector"></div>
+                <div class="input-label">From AI Copywriting & Trend Content</div>
+                <div class="flowchart-node tertiary tertiary tertiary-node">
+                    BLUESKY
+                    <div class="icon-container">
+                        <i class="material-icons">cloud</i>
+                    </div>
+                    <div class="priority-tag priority-low"></div>
+                </div>
+                <div class="platform-description">
+                    <ul>
+                        <li>To Be Explored: Mirror either Twitter or Instagram</li>
+                        <li>Strategy still in development phase</li>
+                        <li>Will test both approaches before finalizing</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="branch-horizontal branch-horizontal-top" style="width: 90%; left: 5%;"></div>
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- INDEPENDENT ACQUISITION SYSTEMS -->
+        <div class="output-lanes">
+            <!-- PRODUCT-LED GROWTH -->
+            <div class="output-lane">
+                <div class="output-lane-label">PRODUCT-LED GROWTH</div>
+                <div class="independent-module">
+                    <div class="module-header">
+                        <i class="material-icons">rocket_launch</i>
+                        <div class="module-title">PRODUCT-LED GROWTH</div>
+                        <div class="priority-tag priority-high"></div>
+                    </div>
+                    <div class="module-details">
+                        <div class="module-detail"><span class="module-detail-label">Content Type:</span> In-Product Experience</div>
+                        <div class="module-detail"><span class="module-detail-label">Target Platform:</span> SoulPrint App</div>
+                        <div class="module-detail"><span class="module-detail-label">Effort Level:</span> Medium (Development)</div>
+                        <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Free Trial to Paid</div>
+                    </div>
+                    <div class="node-details">
+                        <div class="node-details-subtitle">Free Trial Conversion</div>
+                        <ul>
+                            <li>Seamless onboarding flow with value demonstration</li>
+                            <li>Strategic in-product CTAs at key usage moments</li>
+                            <li>Progressive feature unlocking based on usage</li>
+                            <li>Personalized email sequences during trial</li>
+                        </ul>
+                        
+                        <div class="node-details-subtitle">Retargeting Strategy</div>
+                        <ul>
+                            <li>Track trial user behavior patterns</li>
+                            <li>Targeted ads based on feature usage</li>
+                            <li>Exit-intent popups with special offers</li>
+                            <li>Post-trial follow-up with use case suggestions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SEO FLYWHEEL -->
+            <div class="output-lane">
+                <div class="independent-module">
+                    <div class="module-header">
+                        <i class="material-icons">sync</i>
+                        <div class="module-title">SEO FLYWHEEL</div>
+                        <div class="priority-tag priority-medium"></div>
+                    </div>
+                    <div class="module-details">
+                        <div class="module-detail"><span class="module-detail-label">Content Type:</span> Long-Form Blog Content</div>
+                        <div class="module-detail"><span class="module-detail-label">Target Platform:</span> Website & Search Engines</div>
+                        <div class="module-detail"><span class="module-detail-label">Effort Level:</span> Medium (Content Creation)</div>
+                        <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Newsletter & Free Trial</div>
+                    </div>
+                    <div class="node-details">
+                        <div class="node-details-subtitle">Content Strategy</div>
+                        <ul>
+                            <li>Publish long-form evergreen blog content weekly</li>
+                            <li>Repurpose into Twitter, Reddit, Instagram posts</li>
+                            <li>Internal linking and schema markup for SEO</li>
+                        </ul>
+                        
+                        <div class="node-details-subtitle">Link Building</div>
+                        <ul>
+                            <li>Build backlinks via high-authority blogs</li>
+                            <li>Partner features and guest posts</li>
+                            <li>Use posts to convert users into newsletter + free trial</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEO AUTOMATION AGENT -->
+        <div class="flowchart-row">
+            <div class="independent-module">
+                <div class="module-header">
+                    <i class="material-icons">smart_toy</i>
+                    <div class="module-title">SEO AUTOMATION AGENT</div>
+                    <div class="priority-tag priority-medium"></div>
+                </div>
+                <div class="module-details">
+                    <div class="module-detail"><span class="module-detail-label">Content Type:</span> Optimized Site Copy</div>
+                    <div class="module-detail"><span class="module-detail-label">Target Platform:</span> Website & AI Search</div>
+                    <div class="module-detail"><span class="module-detail-label">Effort Level:</span> Low (Automated)</div>
+                    <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Search Visibility</div>
+                </div>
+                <div class="node-details">
+                    <ul>
+                        <li>N8N-based tool created by Drew</li>
+                        <li>Rewrites site copy for Google SEO optimization</li>
+                        <li>Optimizes for AI search engines (Gemini, Perplexity)</li>
+                        <li>Tied to the SEO Flywheel system</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PARASITE SYSTEM -->
+        <div class="flowchart-row">
+            <div class="independent-module">
+                <div class="module-header">
+                    <i class="material-icons">psychology</i>
+                    <div class="module-title">PARASITE SYSTEM</div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="module-details">
+                    <div class="module-detail"><span class="module-detail-label">Content Type:</span> Comments & Engagement</div>
+                    <div class="module-detail"><span class="module-detail-label">Target Platform:</span> Twitter, Reddit, Discord</div>
+                    <div class="module-detail"><span class="module-detail-label">Effort Level:</span> Low (AI-assisted)</div>
+                    <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Community Growth & Authority</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="branch-horizontal branch-horizontal-top" style="width: 90%; left: 5%;"></div>
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- TRAFFIC DRIVERS -->
+        <div class="flowchart-row">
+            <div class="flowchart-node secondary secondary-node">
+                TRAFFIC DRIVERS
+                <div class="icon-container">
+                    <i class="material-icons">trending_up</i>
+                </div>
+                <div class="priority-tag priority-medium"></div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="connector connector-vertical" style="height: 20px;"></div>
+        </div>
+        
+        <!-- APP DOWNLOADS, WEBSITE VISITS -->
+        <div class="flowchart-row">
+            <div class="node-group">
+                <div class="flowchart-branch">
+                    <div class="flowchart-node tertiary tertiary tertiary-node">
+                        APP DOWNLOADS
+                        <div class="icon-container">
+                            <i class="material-icons">get_app</i>
+                        </div>
+                        <div class="priority-tag priority-medium"></div>
+                    </div>
+                </div>
+                <div class="flowchart-branch">
+                    <div class="flowchart-node tertiary tertiary tertiary-node">
+                        WEBSITE VISITS
+                        <div class="icon-container">
+                            <i class="material-icons">language</i>
+                        </div>
+                        <div class="priority-tag priority-medium"></div>
+                    </div>
+                    <div class="branch-connector branch-connector-left"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Branch connectors -->
+        <div class="flowchart-row" style="height: 20px;">
+            <div class="connector connector-vertical" style="height: 20px; left: 60%;"></div>
+        </div>
+        
+        <!-- LANDING PAGE FUNNEL -->
+        <div class="flowchart-row">
+            <div class="flowchart-node tertiary tertiary tertiary-node">
+                LANDING PAGE FUNNEL
+                <div class="icon-container">
+                    <i class="material-icons">tune</i>
+                </div>
+                <div class="priority-tag priority-medium"></div>
+            </div>
+        </div>
+        
+        <!-- PERFORMANCE FEEDBACK LOOP -->
+        <div class="flowchart-row">
+            <div class="independent-module">
+                <div class="module-header">
+                    <i class="material-icons">analytics</i>
+                    <div class="module-title">PERFORMANCE FEEDBACK LOOP</div>
+                    <div class="priority-tag priority-high"></div>
+                </div>
+                <div class="module-details">
+                    <div class="module-detail"><span class="module-detail-label">Content Type:</span> Data Analysis</div>
+                    <div class="module-detail"><span class="module-detail-label">Target Platform:</span> All Channels</div>
+                    <div class="module-detail"><span class="module-detail-label">Effort Level:</span> Medium</div>
+                    <div class="module-detail"><span class="module-detail-label">Goal:</span> Insight-Driven Growth</div>
+                </div>
+                <div class="node-details">
+                    <div class="node-details-subtitle">KPI Focus</div>
+                    <ul>
+                        <li>Engagement: Views, Likes, Clicks</li>
+                        <li>Conversion: Free Trials, Sales</li>
+                    </ul>
+                    
+                    <div class="node-details-subtitle">Tools</div>
+                    <ul>
+                        <li>GA4 + Looker Studio</li>
+                        <li>PostHog, TikTok & Meta Analytics</li>
+                    </ul>
+                    
+                    <div class="node-details-subtitle">Action Cycle</div>
+                    <ul>
+                        <li>Weekly review → Adjust content → Repeat</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- OPTIONAL B2B VERTICAL -->
+        <div class="b2b-lane">
+            <div class="b2b-lane-label">Optional B2B Vertical</div>
+            <div class="independent-module">
+                <div class="module-header">
+                    <i class="material-icons">business</i>
+                    <div class="module-title">SYSTEM LICENSING & AGENCY OFFERING</div>
+                    <div class="priority-tag priority-medium"></div>
+                </div>
+                <div class="module-details">
+                    <div class="module-detail"><span class="module-detail-label">Content Type:</span> B2B Solutions</div>
+                    <div class="module-detail"><span class="module-detail-label">Target Platform:</span> Enterprise Clients</div>
+                    <div class="module-detail"><span class="module-detail-label">Effort Level:</span> High (Custom Development)</div>
+                    <div class="module-detail"><span class="module-detail-label">Conversion Goal:</span> Enterprise Sales</div>
+                </div>
+                <div class="node-details">
+                    <div class="node-details-subtitle">Licensing Model</div>
+                    <ul>
+                        <li>White-label SoulPrint system for enterprise clients</li>
+                        <li>Custom AI agent development for specific use cases</li>
+                        <li>API access for integration with existing systems</li>
+                        <li>Technical support and maintenance packages</li>
+                    </ul>
+                    
+                    <div class="node-details-subtitle">Agency Services</div>
+                    <ul>
+                        <li>Content strategy consulting for B2B clients</li>
+                        <li>Custom AI content creation workflows</li>
+                        <li>Marketing automation implementation</li>
+                        <li>Training and onboarding for internal teams</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
-
