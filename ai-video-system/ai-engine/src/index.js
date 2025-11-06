@@ -16,12 +16,21 @@ const videoGenerationService = require('./services/videoGeneration');
 const worldBuildingService = require('./services/worldBuilding');
 const personalizationService = require('./services/personalization');
 const contentAnalysisService = require('./services/contentAnalysis');
+const aiProvidersService = require('./services/aiProviders');
+
+// Import job queue services
+const { initializeQueues, closeQueues } = require('./services/jobQueue');
+const { initializeJobWorkers, gracefulShutdown } = require('./services/jobWorkers');
+const { workerPool } = require('./services/workerPool');
 
 // Import routes
 const aiRoutes = require('./routes/ai');
 const videoRoutes = require('./routes/video');
 const worldRoutes = require('./routes/world');
 const analysisRoutes = require('./routes/analysis');
+const aiProvidersRoutes = require('./routes/aiProviders');
+const jobQueueRoutes = require('./routes/jobQueue');
+const workerPoolRoutes = require('./routes/workerPool');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -48,14 +57,37 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    service: 'AI Engine',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: '1.0.0'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const aiProvidersHealth = await global.aiProviders?.getAllProvidersHealth() || {};
+    const { getQueueHealth } = require('./services/jobQueue');
+    const queueHealth = await getQueueHealth();
+    const workerPoolStats = workerPool.getWorkerStats();
+    
+    res.status(200).json({
+      status: 'OK',
+      service: 'AI Engine',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: '1.0.0',
+      aiProviders: aiProvidersHealth,
+      jobQueue: queueHealth,
+      workerPool: {
+        totalWorkers: workerPoolStats.total,
+        availableWorkers: workerPoolStats.available,
+        busyWorkers: workerPoolStats.busy,
+        tasksCompleted: workerPoolStats.tasksCompleted,
+        tasksFailed: workerPoolStats.tasksFailed
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      service: 'AI Engine',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 
 // API routes
@@ -63,6 +95,9 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/world', worldRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/ai-providers', aiProvidersRoutes);
+app.use('/api/jobs', jobQueueRoutes);
+app.use('/api/workers', workerPoolRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
@@ -75,7 +110,13 @@ app.use('*', (req, res) => {
 // Initialize AI services
 async function initializeAIServices() {
   try {
-    // Initialize OpenAI
+    // Initialize AI providers service
+    await aiProvidersService.initialize();
+    
+    // Set global providers for backward compatibility
+    global.aiProviders = aiProvidersService;
+    
+    // Initialize individual providers for backward compatibility
     const { Configuration, OpenAIApi } = require('openai');
     const configuration = new Configuration({
       apiKey: process.env.OPENAI_API_KEY,
@@ -193,6 +234,15 @@ async function startServer() {
     // Initialize AI services
     await initializeAIServices();
 
+    // Initialize job queue system
+    await initializeQueues();
+    await initializeJobWorkers();
+    logger.info('Job queue system initialized successfully');
+    
+    // Initialize enhanced worker pool
+    await workerPool.initialize();
+    logger.info('Enhanced worker pool initialized successfully');
+
     // Initialize GPU acceleration
     initializeGPU();
 
@@ -211,26 +261,52 @@ async function startServer() {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
   
-  // Close worker threads
-  if (global.workerPool) {
-    global.workerPool.forEach(worker => worker.terminate());
+  try {
+    // Shutdown enhanced worker pool
+    await workerPool.shutdown();
+    
+    // Shutdown job queue system
+    await gracefulShutdown();
+    await closeQueues();
+    
+    // Close worker threads
+    if (global.workerPool) {
+      global.workerPool.forEach(worker => worker.terminate());
+    }
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
   }
-  
-  process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
   
-  // Close worker threads
-  if (global.workerPool) {
-    global.workerPool.forEach(worker => worker.terminate());
+  try {
+    // Shutdown enhanced worker pool
+    await workerPool.shutdown();
+    
+    // Shutdown job queue system
+    await gracefulShutdown();
+    await closeQueues();
+    
+    // Close worker threads
+    if (global.workerPool) {
+      global.workerPool.forEach(worker => worker.terminate());
+    }
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown:', error);
+    process.exit(1);
   }
-  
-  process.exit(0);
 });
 
 // Handle unhandled promise rejections

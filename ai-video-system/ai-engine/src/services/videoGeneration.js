@@ -1,9 +1,12 @@
 const logger = require('../utils/logger');
 const { query } = require('../database/connection');
 const { cache } = require('../services/redis');
+const aiProviders = require('./aiProviders');
+const { addJob, getJob, getJobProgress, getCachedJobResult, JOB_TYPES } = require('./jobQueue');
 
 class VideoGenerationService {
   constructor() {
+    // Legacy properties for backward compatibility
     this.renderQueue = [];
     this.activeJobs = new Map();
     this.maxConcurrentJobs = 3;
@@ -26,24 +29,31 @@ class VideoGenerationService {
       const job = await this.createRenderJob({
         userId,
         projectId,
-        status: 'processing',
+        status: 'queued',
         settings: { prompt, ...settings }
       });
 
-      // Add to queue
-      this.renderQueue.push({
-        jobId: job.id,
-        prompt,
-        settings,
+      // Add to enhanced job queue
+      const queueJob = await addJob(JOB_TYPES.VIDEO_GENERATION, {
         userId,
         projectId,
-        createdAt: new Date()
+        prompt,
+        settings,
+        renderJobId: job.id,
+        userSubscription: settings.userSubscription || 'free'
+      }, {
+        priority: settings.priority,
+        userSubscription: settings.userSubscription || 'free'
       });
 
-      // Process queue
-      this.processQueue();
+      // Update job record with queue job ID
+      await this.updateJobQueueId(job.id, queueJob.id);
 
-      return job;
+      return {
+        ...job,
+        queueJobId: queueJob.id,
+        status: 'queued'
+      };
     } catch (error) {
       logger.error('Video generation failed:', error);
       throw error;
@@ -51,9 +61,11 @@ class VideoGenerationService {
   }
 
   /**
-   * Process video generation queue
+   * Process video generation queue (legacy method for backward compatibility)
    */
   async processQueue() {
+    logger.warn('Legacy processQueue method called. Consider using job queue system directly.');
+    
     if (this.activeJobs.size >= this.maxConcurrentJobs || this.renderQueue.length === 0) {
       return;
     }
@@ -107,12 +119,12 @@ class VideoGenerationService {
    */
   async generateScript(prompt, settings) {
     try {
-      const response = await global.openai.createChatCompletion({
+      const result = await aiProviders.openaiGenerateText({
         model: 'gpt-4',
         messages: [
           {
             role: 'system',
-            content: `You are a professional video script writer. Create a compelling video script based on the user's prompt. 
+            content: `You are a professional video script writer. Create a compelling video script based on the user's prompt.
             The script should include:
             1. Scene descriptions
             2. Dialogue/narration
@@ -140,11 +152,11 @@ class VideoGenerationService {
             content: `Create a video script for: ${prompt}\n\nStyle: ${settings.style || 'modern'}\nDuration: ${settings.duration || 30} seconds\nTone: ${settings.tone || 'engaging'}`
           }
         ],
-        max_tokens: 2000,
+        maxTokens: 2000,
         temperature: 0.7
       });
 
-      const scriptData = JSON.parse(response.data.choices[0].message.content);
+      const scriptData = JSON.parse(result.content);
       return scriptData;
     } catch (error) {
       logger.error('Script generation failed:', error);
@@ -194,17 +206,17 @@ class VideoGenerationService {
    */
   async generateImageStableDiffusion(prompt) {
     try {
-      const response = await global.stability.generateImage({
+      const result = await aiProviders.stabilityGenerateImage({
         prompt: prompt,
         width: 1024,
         height: 576,
         samples: 1,
         steps: 30,
-        cfg_scale: 7.5,
-        style_preset: 'cinematic'
+        cfgScale: 7.5,
+        stylePreset: 'cinematic'
       });
 
-      return response.artifacts[0].base64;
+      return result.images[0].base64;
     } catch (error) {
       logger.error('Stable Diffusion image generation failed:', error);
       throw error;
@@ -218,7 +230,7 @@ class VideoGenerationService {
    */
   async generateImageDALLE(prompt) {
     try {
-      const response = await global.openai.createImage({
+      const result = await aiProviders.openaiGenerateImage({
         prompt: prompt,
         n: 1,
         size: '1024x576',
@@ -226,7 +238,7 @@ class VideoGenerationService {
         style: 'cinematic'
       });
 
-      return response.data.data[0].url;
+      return result.images[0].url;
     } catch (error) {
       logger.error('DALL-E image generation failed:', error);
       throw error;
@@ -331,23 +343,19 @@ class VideoGenerationService {
       const fullText = script.scenes.map(scene => scene.dialogue).join(' ');
       
       // Generate voice using ElevenLabs
-      const voiceSettings = {
-        voice_id: settings.voiceId || 'rachel',
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
+      const result = await aiProviders.elevenlabsGenerateSpeech({
+        text: fullText,
+        voiceId: settings.voiceId || 'rachel',
+        modelId: 'eleven_monolingual_v1',
+        voiceSettings: {
           stability: 0.75,
           similarity_boost: 0.75,
           style: 0.0,
           use_speaker_boost: true
         }
-      };
-
-      const audio = await global.elevenlabs.generate({
-        text: fullText,
-        voice_settings: voiceSettings
       });
 
-      return audio;
+      return result.audio;
     } catch (error) {
       logger.error('Voiceover generation failed:', error);
       throw new Error('Failed to generate voiceover');
@@ -382,10 +390,10 @@ class VideoGenerationService {
       let command = ffmpeg();
 
       // Add scenes
-      scenes.forEach((scene, index) => {
+      for (const [index, scene] of scenes.entries()) {
         const scenePath = await this.downloadImage(scene.imageUrl, `/tmp/scene_${index}.jpg`);
         command = command.input(scenePath);
-      });
+      }
 
       // Add voiceover
       const voiceoverPath = await this.downloadAudio(voiceover, `/tmp/voiceover.mp3`);
@@ -580,7 +588,25 @@ class VideoGenerationService {
       [jobId]
     );
 
-    return result.rows[0];
+    const jobData = result.rows[0];
+    
+    // If job has queue job ID, get progress from job queue
+    if (jobData && jobData.queue_job_id) {
+      try {
+        const progress = await getJobProgress(jobData.queue_job_id);
+        const result = await getCachedJobResult(jobData.queue_job_id);
+        
+        return {
+          ...jobData,
+          progress,
+          result
+        };
+      } catch (error) {
+        logger.warn('Failed to get job queue status:', error);
+      }
+    }
+
+    return jobData;
   }
 
   /**
@@ -590,8 +616,26 @@ class VideoGenerationService {
    */
   async cancelJob(jobId) {
     try {
+      // Get job data to check for queue job ID
+      const jobResult = await query(
+        'SELECT queue_job_id FROM render_jobs WHERE id = $1',
+        [jobId]
+      );
+      
+      const jobData = jobResult.rows[0];
+      
       // Remove from queue if pending
       this.renderQueue = this.renderQueue.filter(job => job.jobId !== jobId);
+      
+      // Cancel job in queue if it exists
+      if (jobData && jobData.queue_job_id) {
+        try {
+          const { removeJob } = require('./jobQueue');
+          await removeJob(JOB_TYPES.VIDEO_GENERATION, jobData.queue_job_id);
+        } catch (error) {
+          logger.warn('Failed to cancel job queue job:', error);
+        }
+      }
       
       // Update status in database
       await this.updateJobStatus(jobId, 'cancelled', 0);
@@ -601,6 +645,22 @@ class VideoGenerationService {
     } catch (error) {
       logger.error('Failed to cancel render job:', error);
       return false;
+    }
+  }
+
+  /**
+   * Update job queue ID
+   * @param {string} jobId - Render job ID
+   * @param {string} queueJobId - Queue job ID
+   */
+  async updateJobQueueId(jobId, queueJobId) {
+    try {
+      await query(
+        'UPDATE render_jobs SET queue_job_id = $1 WHERE id = $2',
+        [queueJobId, jobId]
+      );
+    } catch (error) {
+      logger.error('Failed to update job queue ID:', error);
     }
   }
 }

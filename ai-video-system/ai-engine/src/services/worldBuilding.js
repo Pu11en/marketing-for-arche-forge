@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { query } = require('../database/connection');
 const { cache } = require('../services/redis');
+const aiProviders = require('./aiProviders');
 
 class WorldBuildingService {
   constructor() {

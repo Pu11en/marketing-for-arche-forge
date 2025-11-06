@@ -92,6 +92,21 @@ io.on('connection', (socket) => {
   });
 });
 
+// Swagger documentation
+if (process.env.ENABLE_SWAGGER !== 'false') {
+  const swaggerUi = require('swagger-ui-express');
+  const { specs, swaggerUiOptions } = require('./config/swagger');
+  
+  app.use('/api-docs', swaggerUi.serve);
+  app.get('/api-docs', swaggerUi.setup(specs, swaggerUiOptions));
+  
+  // JSON API documentation
+  app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(specs);
+  });
+}
+
 // Error handling middleware
 app.use(errorHandler);
 
