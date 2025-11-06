@@ -68,7 +68,6 @@
     "@types/fabric": "^5.3.6",
     "@types/three": "^0.159.0",
     "@types/react-beautiful-dnd": "^13.1.7",
-    "@types/react-player": "^2.9.3",
     "@types/react-virtualized": "^9.21.29",
     "@types/react-window": "^1.8.8",
     "@types/nprogress": "^0.2.3",

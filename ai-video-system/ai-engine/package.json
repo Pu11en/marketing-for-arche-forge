@@ -53,10 +53,7 @@
     "gl-transitions": "^1.0.0",
     "gl-effects": "^1.0.0",
     "glslify": "^7.0.0",
-    "glslify-loader": "^1.0.0",
-    "worker_threads": "^1.0.0",
-    "cluster": "^0.7.7",
-    "os": "^0.1.2"
+    "glslify-loader": "^1.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
