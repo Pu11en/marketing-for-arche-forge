@@ -10,6 +10,10 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 
+// Import upload and processing services
+const uploadService = require('../services/upload');
+const assetProcessingService = require('../services/assetProcessing');
+
 const router = express.Router();
 
 // Rate limiting for asset uploads
@@ -19,28 +23,25 @@ const assetUploadRateLimit = createRateLimit({
   message: 'Too many asset uploads, please try again later.'
 });
 
-// Configure multer for file uploads
+// Configure multer for file uploads (memory storage for validation)
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit
+    fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
     files: 5 // Max 5 files at once
   },
   fileFilter: (req, file, cb) => {
-    // Check file type
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
-      'audio/mp3', 'audio/wav', 'audio/ogg',
-      'text/plain', 'application/json',
-      'model/gltf+json', 'model/gltf-binary'
-    ];
-
-    if (allowedTypes.includes(file.mimetype)) {
+    // Use upload service to validate file
+    const validation = uploadService.validateFile({
+      mimetype: file.mimetype,
+      size: req.headers['content-length'] || 0
+    });
+    
+    if (validation.valid) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type'), false);
+      cb(new Error(validation.error), false);
     }
   }
 });
@@ -51,14 +52,9 @@ const updateAssetValidation = [
   body('metadata').optional().isObject().withMessage('Metadata must be an object')
 ];
 
-// Helper function to determine asset type from mimetype
+// Helper function to determine asset type from mimetype (using upload service)
 const getAssetType = (mimetype) => {
-  if (mimetype.startsWith('image/')) return 'image';
-  if (mimetype.startsWith('video/')) return 'video';
-  if (mimetype.startsWith('audio/')) return 'audio';
-  if (mimetype.startsWith('text/') || mimetype === 'application/json') return 'text';
-  if (mimetype.startsWith('model/')) return 'model';
-  return 'other';
+  return uploadService.getAssetTypeFromMimeType(mimetype);
 };
 
 // Helper function to get file dimensions
@@ -133,25 +129,49 @@ router.post('/upload/:projectId', requireProjectAccess, assetUploadRateLimit, up
   // Process each file
   for (const file of req.files) {
     try {
-      const assetType = getAssetType(file.mimetype);
-      const dimensions = await getFileDimensions(file);
-      const duration = await getFileDuration(file);
-
-      // Generate unique filename
-      const fileExtension = path.extname(file.originalname);
-      const fileName = `${uuidv4()}${fileExtension}`;
-      const filePath = `assets/${userId}/${projectId}/${fileName}`;
-
-      // In a real implementation, you would upload to S3 or similar
-      // For now, we'll simulate the upload and store the URL
-      const assetUrl = `${process.env.BASE_URL || 'http://localhost:3001'}/uploads/${filePath}`;
-
-      // Save file to local storage (for development)
-      const uploadDir = path.join(__dirname, '../../uploads', userId.toString(), projectId.toString());
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      // Validate file
+      const validation = uploadService.validateFile({
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      
+      if (!validation.valid) {
+        throw new ValidationError(validation.error);
       }
-      fs.writeFileSync(path.join(uploadDir, fileName), file.buffer);
+      
+      const assetType = validation.assetType;
+      
+      // Scan file for malware
+      const isSafe = await uploadService.scanFileForMalware(file.buffer, file.mimetype);
+      if (!isSafe) {
+        throw new ValidationError('File failed security scan');
+      }
+
+      // Generate unique S3 key
+      const fileExtension = path.extname(file.originalname);
+      const s3Key = uploadService.generateFileKey(userId, projectId, file.originalname, assetType);
+
+      // Upload to S3
+      const uploadResult = await uploadService.uploadBufferToS3(file.buffer, s3Key, file.mimetype);
+      
+      // Generate download URL
+      const downloadUrl = await uploadService.generatePresignedDownloadUrl(s3Key, 86400 * 30); // 30 days
+
+      // Get file dimensions and duration
+      let dimensions = null;
+      let duration = null;
+      
+      if (assetType === 'image') {
+        dimensions = await uploadService.getImageDimensions(file.buffer);
+      } else if (assetType === 'video') {
+        dimensions = await uploadService.getVideoDimensions(file.buffer);
+        duration = await uploadService.getVideoDuration(file.buffer);
+      } else if (assetType === 'audio') {
+        duration = await uploadService.getVideoDuration(file.buffer);
+      }
+
+      // Calculate file hash
+      const fileHash = uploadService.calculateFileHash(file.buffer);
 
       // Create asset record
       const result = await dbQuery(`
@@ -163,18 +183,24 @@ router.post('/upload/:projectId', requireProjectAccess, assetUploadRateLimit, up
         projectId,
         assetType,
         file.originalname,
-        assetUrl,
+        downloadUrl,
         file.size,
         dimensions ? JSON.stringify(dimensions) : null,
         duration,
         JSON.stringify({
           originalName: file.originalname,
           mimetype: file.mimetype,
-          encoding: file.encoding
+          encoding: file.encoding,
+          s3Key,
+          fileHash,
+          uploadResult
         })
       ]);
 
       uploadedAssets.push(result.rows[0]);
+
+      // Queue asset for processing (thumbnails, metadata extraction, etc.)
+      assetProcessingService.queueAssetForProcessing(result.rows[0].id, s3Key, assetType);
 
       // Log asset upload
       logger.logUserActivity(userId, 'asset_uploaded', {
@@ -182,6 +208,8 @@ router.post('/upload/:projectId', requireProjectAccess, assetUploadRateLimit, up
         assetId: result.rows[0].id,
         fileName: file.originalname,
         fileSize: file.size,
+        assetType,
+        s3Key,
         ip: req.ip
       });
 
@@ -406,17 +434,33 @@ router.delete('/:id', catchAsync(async (req, res) => {
   // Delete asset from database
   await dbQuery('DELETE FROM assets WHERE id = $1', [assetId]);
 
-  // Delete file from storage (in a real implementation, you'd delete from S3)
+  // Delete file from S3
   try {
-    const urlParts = asset.url.split('/');
-    const fileName = urlParts[urlParts.length - 1];
-    const filePath = path.join(__dirname, '../../uploads', userId.toString(), asset.project_id.toString(), fileName);
+    const metadata = asset.metadata || {};
+    const s3Key = metadata.s3Key;
     
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (s3Key) {
+      await uploadService.deleteFileFromS3(s3Key);
+      
+      // Also delete associated thumbnails and formats
+      if (metadata.thumbnails) {
+        for (const thumbnail of metadata.thumbnails) {
+          if (thumbnail.key) {
+            await uploadService.deleteFileFromS3(thumbnail.key);
+          }
+        }
+      }
+      
+      if (metadata.formats) {
+        for (const format of metadata.formats) {
+          if (format.key) {
+            await uploadService.deleteFileFromS3(format.key);
+          }
+        }
+      }
     }
   } catch (error) {
-    logger.error('Failed to delete asset file:', error);
+    logger.error('Failed to delete asset file from S3:', error);
     // Continue even if file deletion fails
   }
 
@@ -510,6 +554,295 @@ router.post('/:id/move', catchAsync(async (req, res) => {
     message: 'Asset moved successfully',
     data: {
       asset: movedAsset
+    }
+  });
+}));
+
+// Generate presigned upload URL for direct browser upload
+router.post('/presigned-url/:projectId', requireProjectAccess, catchAsync(async (req, res) => {
+  const projectId = req.params.projectId;
+  const userId = req.user.id;
+  const { fileName, fileSize, mimeType } = req.body;
+
+  // Check if user has permission to upload
+  if (req.projectAccess.role === 'viewer') {
+    throw new ForbiddenError('You do not have permission to upload assets to this project');
+  }
+
+  // Validate input
+  if (!fileName || !mimeType) {
+    throw new ValidationError('File name and MIME type are required');
+  }
+
+  // Validate file
+  const validation = uploadService.validateFile({
+    mimetype: mimeType,
+    size: fileSize || 0
+  });
+  
+  if (!validation.valid) {
+    throw new ValidationError(validation.error);
+  }
+
+  const assetType = validation.assetType;
+
+  // Generate unique S3 key
+  const s3Key = uploadService.generateFileKey(userId, projectId, fileName, assetType);
+
+  // Generate presigned upload URL
+  const uploadUrl = await uploadService.generatePresignedUploadUrl(s3Key, mimeType, 3600); // 1 hour
+
+  // Generate download URL for after upload
+  const downloadUrl = await uploadService.generatePresignedDownloadUrl(s3Key, 86400 * 30); // 30 days
+
+  res.json({
+    status: 'success',
+    data: {
+      uploadUrl,
+      downloadUrl,
+      s3Key,
+      assetType,
+      expiresIn: 3600
+    }
+  });
+}));
+
+// Initiate multipart upload for large files
+router.post('/multipart-upload/initiate/:projectId', requireProjectAccess, catchAsync(async (req, res) => {
+  const projectId = req.params.projectId;
+  const userId = req.user.id;
+  const { fileName, fileSize, mimeType } = req.body;
+
+  // Check if user has permission to upload
+  if (req.projectAccess.role === 'viewer') {
+    throw new ForbiddenError('You do not have permission to upload assets to this project');
+  }
+
+  // Validate input
+  if (!fileName || !mimeType || !fileSize) {
+    throw new ValidationError('File name, MIME type, and file size are required');
+  }
+
+  // Validate file
+  const validation = uploadService.validateFile({
+    mimetype: mimeType,
+    size: fileSize
+  });
+  
+  if (!validation.valid) {
+    throw new ValidationError(validation.error);
+  }
+
+  const assetType = validation.assetType;
+
+  // Generate unique S3 key
+  const s3Key = uploadService.generateFileKey(userId, projectId, fileName, assetType);
+
+  // Initiate multipart upload
+  const multipartUpload = await uploadService.initiateMultipartUpload(s3Key, mimeType);
+
+  res.json({
+    status: 'success',
+    data: {
+      uploadId: multipartUpload.UploadId,
+      s3Key,
+      assetType
+    }
+  });
+}));
+
+// Get presigned URL for multipart upload part
+router.post('/multipart-upload/part-url', requireProjectAccess, catchAsync(async (req, res) => {
+  const { s3Key, uploadId, partNumber } = req.body;
+
+  // Validate input
+  if (!s3Key || !uploadId || !partNumber) {
+    throw new ValidationError('S3 key, upload ID, and part number are required');
+  }
+
+  // Generate presigned URL for part
+  const partUrl = await uploadService.generatePresignedMultipartUrl(s3Key, uploadId, partNumber);
+
+  res.json({
+    status: 'success',
+    data: {
+      partUrl,
+      partNumber,
+      expiresIn: 3600
+    }
+  });
+}));
+
+// Complete multipart upload
+router.post('/multipart-upload/complete', requireProjectAccess, catchAsync(async (req, res) => {
+  const { s3Key, uploadId, parts, projectId, fileName, mimeType, fileSize } = req.body;
+  const userId = req.user.id;
+
+  // Validate input
+  if (!s3Key || !uploadId || !parts || !projectId) {
+    throw new ValidationError('S3 key, upload ID, parts, and project ID are required');
+  }
+
+  // Complete multipart upload
+  const uploadResult = await uploadService.completeMultipartUpload(s3Key, uploadId, parts);
+
+  // Generate download URL
+  const downloadUrl = await uploadService.generatePresignedDownloadUrl(s3Key, 86400 * 30); // 30 days
+
+  // Get file metadata
+  const metadata = await uploadService.getFileMetadata(s3Key);
+
+  // Get asset type
+  const assetType = uploadService.getAssetTypeFromMimeType(mimeType);
+
+  // Get file dimensions and duration (will be processed asynchronously)
+  let dimensions = null;
+  let duration = null;
+
+  // Create asset record
+  const result = await dbQuery(`
+    INSERT INTO assets (user_id, project_id, type, name, url, file_size, dimensions, duration, metadata)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id, type, name, url, file_size, dimensions, duration, metadata, created_at
+  `, [
+    userId,
+    projectId,
+    assetType,
+    fileName,
+    downloadUrl,
+    fileSize,
+    dimensions ? JSON.stringify(dimensions) : null,
+    duration,
+    JSON.stringify({
+      originalName: fileName,
+      mimetype: mimeType,
+      s3Key,
+      uploadResult,
+      metadata
+    })
+  ]);
+
+  // Queue asset for processing (thumbnails, metadata extraction, etc.)
+  assetProcessingService.queueAssetForProcessing(result.rows[0].id, s3Key, assetType);
+
+  // Log asset upload
+  logger.logUserActivity(userId, 'asset_uploaded_multipart', {
+    projectId,
+    assetId: result.rows[0].id,
+    fileName,
+    fileSize,
+    assetType,
+    s3Key,
+    partsCount: parts.length,
+    ip: req.ip
+  });
+
+  // Clear project assets cache
+  await cache.del(`project_assets:${projectId}:${userId}`);
+
+  res.json({
+    status: 'success',
+    message: 'Multipart upload completed successfully',
+    data: {
+      asset: result.rows[0],
+      downloadUrl
+    }
+  });
+}));
+
+// Abort multipart upload
+router.post('/multipart-upload/abort', requireProjectAccess, catchAsync(async (req, res) => {
+  const { s3Key, uploadId } = req.body;
+
+  // Validate input
+  if (!s3Key || !uploadId) {
+    throw new ValidationError('S3 key and upload ID are required');
+  }
+
+  // Abort multipart upload
+  await uploadService.abortMultipartUpload(s3Key, uploadId);
+
+  res.json({
+    status: 'success',
+    message: 'Multipart upload aborted successfully'
+  });
+}));
+
+// Get asset processing status
+router.get('/:id/processing-status', catchAsync(async (req, res) => {
+  const assetId = req.params.id;
+  const userId = req.user.id;
+
+  // Check if user has access to the asset
+  const assetResult = await dbQuery(`
+    SELECT a.id, a.metadata, a.user_id, p.id as project_id
+    FROM assets a
+    LEFT JOIN projects p ON a.project_id = p.id
+    LEFT JOIN collaborations c ON p.id = c.project_id AND c.user_id = $1
+    WHERE a.id = $2 AND (a.user_id = $1 OR c.user_id IS NOT NULL)
+  `, [userId, assetId]);
+
+  if (assetResult.rows.length === 0) {
+    throw new NotFoundError('Asset');
+  }
+
+  const asset = assetResult.rows[0];
+  const metadata = asset.metadata || {};
+
+  // Check processing status
+  const processingStatus = {
+    isProcessed: !!(metadata.thumbnails || metadata.formats || metadata.waveformData),
+    hasThumbnails: !!(metadata.thumbnails && metadata.thumbnails.length > 0),
+    hasFormats: !!(metadata.formats && metadata.formats.length > 0),
+    hasWaveform: !!metadata.waveformData,
+    processingComplete: !!(metadata.thumbnails || metadata.formats || metadata.waveformData)
+  };
+
+  res.json({
+    status: 'success',
+    data: {
+      assetId,
+      processingStatus,
+      metadata
+    }
+  });
+}));
+
+// Generate new download URL for an asset
+router.post('/:id/download-url', catchAsync(async (req, res) => {
+  const assetId = req.params.id;
+  const userId = req.user.id;
+  const { expiresIn = 3600 } = req.body;
+
+  // Check if user has access to the asset
+  const assetResult = await dbQuery(`
+    SELECT a.id, a.metadata, a.user_id, p.id as project_id
+    FROM assets a
+    LEFT JOIN projects p ON a.project_id = p.id
+    LEFT JOIN collaborations c ON p.id = c.project_id AND c.user_id = $1
+    WHERE a.id = $2 AND (a.user_id = $1 OR c.user_id IS NOT NULL)
+  `, [userId, assetId]);
+
+  if (assetResult.rows.length === 0) {
+    throw new NotFoundError('Asset');
+  }
+
+  const asset = assetResult.rows[0];
+  const metadata = asset.metadata || {};
+  const s3Key = metadata.s3Key;
+
+  if (!s3Key) {
+    throw new ValidationError('Asset does not have a valid S3 key');
+  }
+
+  // Generate new download URL
+  const downloadUrl = await uploadService.generatePresignedDownloadUrl(s3Key, expiresIn);
+
+  res.json({
+    status: 'success',
+    data: {
+      downloadUrl,
+      expiresIn
     }
   });
 }));
