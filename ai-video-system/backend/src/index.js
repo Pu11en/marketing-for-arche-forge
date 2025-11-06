@@ -23,10 +23,14 @@ const renderRoutes = require('./routes/render');
 const templateRoutes = require('./routes/templates');
 const analyticsRoutes = require('./routes/analytics');
 const subscriptionRoutes = require('./routes/subscriptions');
+const emailRoutes = require('./routes/email');
 
 // Import WebSocket handlers
 const collaborationHandler = require('./services/collaboration');
 const progressHandler = require('./services/progress');
+
+// Import email queue processor
+const emailQueueProcessor = require('./services/emailQueue');
 
 const app = express();
 const server = createServer(app);
@@ -76,6 +80,10 @@ app.use('/api/render', authMiddleware, renderRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/analytics', authMiddleware, analyticsRoutes);
 app.use('/api/subscriptions', authMiddleware, subscriptionRoutes);
+app.use('/api/email', authMiddleware, emailRoutes);
+
+// Email webhook routes (no auth required)
+app.use('/api/email/webhooks', emailRoutes);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
@@ -127,6 +135,10 @@ async function startServer() {
     await connectRedis();
     logger.info('Redis connected successfully');
 
+    // Start email queue processor
+    emailQueueProcessor.start();
+    logger.info('Email queue processor started');
+
     // Start server
     server.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
@@ -141,6 +153,7 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  emailQueueProcessor.stop();
   server.close(() => {
     logger.info('Process terminated');
   });
@@ -148,6 +161,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
+  emailQueueProcessor.stop();
   server.close(() => {
     logger.info('Process terminated');
   });

@@ -45,7 +45,13 @@
     "@google-cloud/storage": "^7.7.0",
     "node-cron": "^3.0.3",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0"
+    "swagger-ui-express": "^5.0.0",
+    "@sendgrid/mail": "^7.7.0",
+    "aws-ses-mail": "^2.1.0",
+    "mailgun-js": "^0.22.0",
+    "handlebars": "^4.7.8",
+    "moment-timezone": "^0.5.43",
+    "crypto": "^1.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
