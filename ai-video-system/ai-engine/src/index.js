@@ -31,6 +31,7 @@ const analysisRoutes = require('./routes/analysis');
 const aiProvidersRoutes = require('./routes/aiProviders');
 const jobQueueRoutes = require('./routes/jobQueue');
 const workerPoolRoutes = require('./routes/workerPool');
+const personalizationRoutes = require('./routes/personalization');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -98,6 +99,7 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/ai-providers', aiProvidersRoutes);
 app.use('/api/jobs', jobQueueRoutes);
 app.use('/api/workers', workerPoolRoutes);
+app.use('/api/personalization', personalizationRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
