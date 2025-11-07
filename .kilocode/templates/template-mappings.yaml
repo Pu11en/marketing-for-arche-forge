@@ -1,0 +1,254 @@
+# Template Mappings for Spec-Kit Mode
+# Maps existing templates to workflow phases and provides metadata
+
+# Specification templates
+specification:
+  primary: "temp-spec-kit/templates/spec-template.md"
+  description: "Template for creating feature specifications"
+  sections:
+    - name: "User Scenarios & Testing"
+      required: true
+      description: "User stories with acceptance criteria"
+    - name: "Requirements"
+      required: true
+      description: "Functional and non-functional requirements"
+    - name: "Success Criteria"
+      required: true
+      description: "Measurable outcomes for the feature"
+    - name: "Key Entities"
+      required: false
+      description: "Data entities involved in the feature"
+  validation:
+    - "no_implementation_details"
+    - "measurable_success_criteria"
+    - "complete_user_stories"
+    - "max_3_ambiguities"
+
+# Planning templates
+planning:
+  primary: "temp-spec-kit/templates/plan-template.md"
+  description: "Template for creating implementation plans"
+  sections:
+    - name: "Technical Context"
+      required: true
+      description: "Technical decisions and constraints"
+    - name: "Constitution Check"
+      required: true
+      description: "Compliance with project constitution"
+    - name: "Project Structure"
+      required: true
+      description: "Directory and file organization"
+  validation:
+    - "constitution_compliance"
+    - "technical_decisions_documented"
+    - "research_complete"
+
+# Task templates
+tasks:
+  primary: "temp-spec-kit/templates/tasks-template.md"
+  description: "Template for breaking down implementation into tasks"
+  sections:
+    - name: "Phase 1: Setup"
+      required: true
+      description: "Project initialization tasks"
+    - name: "Phase 2: Foundational"
+      required: true
+      description: "Core infrastructure tasks"
+    - name: "Phase 3: User Stories"
+      required: true
+      description: "User story implementation tasks"
+    - name: "Phase N: Polish"
+      required: true
+      description: "Finalization and quality tasks"
+  validation:
+    - "user_story_coverage_complete"
+    - "dependency_graph_valid"
+    - "mvp_tasks_identified"
+
+# Checklist templates
+checklists:
+  primary: "temp-spec-kit/templates/checklist-template.md"
+  description: "Template for quality checklists"
+  types:
+    - name: "requirements"
+      description: "Requirements validation checklist"
+    - name: "ux"
+      description: "User experience checklist"
+    - name: "security"
+      description: "Security considerations checklist"
+    - name: "test"
+      description: "Testing checklist"
+
+# Agent file templates
+agent_files:
+  primary: "temp-spec-kit/templates/agent-file-template.md"
+  description: "Template for agent context files"
+  usage: "Updated during planning phase"
+
+# Command-specific templates
+commands:
+  specify:
+    template: "temp-spec-kit/templates/commands/specify.md"
+    description: "Instructions for specification phase"
+    
+  clarify:
+    template: "temp-spec-kit/templates/commands/clarify.md"
+    description: "Instructions for clarification phase"
+    
+  plan:
+    template: "temp-spec-kit/templates/commands/plan.md"
+    description: "Instructions for planning phase"
+    
+  tasks:
+    template: "temp-spec-kit/templates/commands/tasks.md"
+    description: "Instructions for task generation phase"
+    
+  analyze:
+    template: "temp-spec-kit/templates/commands/analyze.md"
+    description: "Instructions for analysis phase"
+    
+  implement:
+    template: "temp-spec-kit/templates/commands/implement.md"
+    description: "Instructions for implementation phase"
+    
+  checklist:
+    template: "temp-spec-kit/templates/commands/checklist.md"
+    description: "Instructions for checklist generation"
+    
+  constitution:
+    template: "temp-spec-kit/templates/commands/constitution.md"
+    description: "Instructions for constitution checking"
+
+# Template customization
+customization:
+  # Variables that can be substituted in templates
+  variables:
+    - name: "FEATURE_NAME"
+      description: "Name of the feature being developed"
+      source: "user_input or branch_name"
+      
+    - name: "BRANCH_NAME"
+      description: "Git branch name for the feature"
+      source: "generated from feature name"
+      
+    - name: "DATE"
+      description: "Current date"
+      source: "current_timestamp"
+      
+    - name: "ARGUMENTS"
+      description: "User input arguments"
+      source: "user_input"
+      
+    - name: "REPO_ROOT"
+      description: "Repository root directory"
+      source: "detected_automatically"
+      
+    - name: "SPECS_DIR"
+      description: "Specifications directory"
+      source: "configured_or_default"
+
+# Template validation rules
+validation_rules:
+  # Required sections that must be present
+  required_sections:
+    spec: ["User Scenarios & Testing", "Requirements", "Success Criteria"]
+    plan: ["Technical Context", "Constitution Check", "Project Structure"]
+    tasks: ["Phase 1: Setup", "Phase 2: Foundational", "Phase 3: User Stories"]
+    
+  # Content validation patterns
+  content_patterns:
+    spec:
+      - pattern: "User Story \d+"
+        description: "Must contain user stories"
+        required: true
+      - pattern: "FR-\d+"
+        description: "Must contain functional requirements"
+        required: true
+      - pattern: "SC-\d+"
+        description: "Must contain success criteria"
+        required: true
+      - pattern: "database|API|endpoint|function|class"
+        description: "Should not contain implementation details"
+        required: false
+        warning: true
+        
+    plan:
+      - pattern: "Language/Version"
+        description: "Must specify programming language"
+        required: true
+      - pattern: "Primary Dependencies"
+        description: "Must specify dependencies"
+        required: true
+      - pattern: "NEEDS CLARIFICATION"
+        description: "Should not have unresolved clarifications"
+        required: false
+        error: true
+        
+    tasks:
+      - pattern: "\- \[ \] T\d+"
+        description: "Must contain tasks"
+        required: true
+      - pattern: "\[US\d+\]"
+        description: "Tasks should reference user stories"
+        required: true
+      - pattern: "Dependencies"
+        description: "Should document dependencies"
+        required: true
+
+# Template integration points
+integration_points:
+  # Where templates are used in the workflow
+  workflow_integration:
+    specify:
+      template: "specification"
+      output_file: "specs/{feature}/spec.md"
+      context_variables: ["FEATURE_NAME", "DATE", "ARGUMENTS"]
+      
+    clarify:
+      template: "specification"
+      input_file: "specs/{feature}/spec.md"
+      output_file: "specs/{feature}/spec.md"
+      context_variables: ["FEATURE_NAME"]
+      
+    plan:
+      template: "planning"
+      input_file: "specs/{feature}/spec.md"
+      output_file: "specs/{feature}/plan.md"
+      context_variables: ["FEATURE_NAME", "DATE", "REPO_ROOT"]
+      
+    tasks:
+      template: "tasks"
+      input_files: ["specs/{feature}/spec.md", "specs/{feature}/plan.md"]
+      output_file: "specs/{feature}/tasks.md"
+      context_variables: ["FEATURE_NAME", "DATE"]
+      
+    analyze:
+      template: null
+      input_files: ["specs/{feature}/spec.md", "specs/{feature}/plan.md", "specs/{feature}/tasks.md"]
+      output_file: null
+      context_variables: ["FEATURE_NAME"]
+      
+    implement:
+      template: null
+      input_files: ["specs/{feature}/tasks.md"]
+      output_file: null
+      context_variables: ["FEATURE_NAME", "REPO_ROOT"]
+
+# Template maintenance
+maintenance:
+  # Version tracking for templates
+  version_tracking:
+    enabled: true
+    file: ".specify/template-versions.json"
+    
+  # Update checking
+  update_check:
+    enabled: true
+    source: "temp-spec-kit/templates/"
+    check_interval: "daily"
+    
+  # Backup and restore
+  backup:
+    enabled: true
+    directory: ".specify/template-backups/"
+    retention_days: 30

@@ -1,6 +1,53 @@
-# Strategic Marketing Operating System (Static Site)
+# Strategic Marketing Operating System with Spec-Kit Integration
 
-This is a minimal static site prepared for Vercel hosting. Replace `index.html` with your full flowchart markup when ready.
+This project combines a strategic marketing operating system with Kilo Code's spec-kit mode for comprehensive spec-driven development. The system provides both a static site for Vercel hosting and advanced development workflow capabilities.
+
+## 🚀 Features
+
+- **Spec-Kit Mode**: Comprehensive spec-driven development workflow
+- **Static Site**: Optimized for Vercel deployment
+- **AI Video System**: Complete video generation pipeline
+- **Development Workflow**: Guided sequential development process
+
+## 📋 Spec-Kit Mode Overview
+
+The spec-kit mode provides a unified, guided experience for spec-driven development that orchestrates the complete development process from specification to implementation:
+
+```
+specify → clarify → plan → tasks → analyze → implement
+```
+
+### Key Benefits
+
+- **Sequential Workflow**: Guided progression through development phases
+- **State Management**: Context preservation between workflow stages
+- **Intelligent Validation**: Quality gates at each transition point
+- **Error Recovery**: Comprehensive error handling and recovery mechanisms
+- **Progress Tracking**: Visual progress indicators and status reporting
+
+### Quick Start with Spec-Kit
+
+```bash
+# Start a new feature with spec-kit mode
+/spec-kit "Add user authentication to my web app"
+
+# Continue from where you left off
+/spec-kit continue
+
+# Check current workflow status
+/spec-kit status
+
+# Generate progress report
+/spec-kit report -Markdown
+```
+
+## 📚 Documentation
+
+- [Spec-Kit Getting Started Guide](docs/spec-kit-getting-started.md)
+- [Spec-Kit Workflow Overview](docs/spec-kit-workflow-overview.md)
+- [Spec-Kit Usage Examples](docs/spec-kit-usage-examples.md)
+- [Spec-Kit Troubleshooting Guide](docs/spec-kit-troubleshooting.md)
+- [Spec-Kit Integration Guide](docs/spec-kit-integration.md)
 
 ## Prepare Git
 
