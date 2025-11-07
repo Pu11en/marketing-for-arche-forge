@@ -48,6 +48,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
+    
+    // Return empty function for non-system themes
+    return () => {};
   }, [theme]);
 
   // Apply theme to document
@@ -170,19 +173,25 @@ export const ThemeComponents = {
     );
   },
   
-  Button: ({ 
-    children, 
-    variant = 'primary', 
-    size = 'md', 
-    className = '', 
-    ...props 
-  }: any) => {
+  Button: ({
+    children,
+    variant = 'primary',
+    size = 'md',
+    className = '',
+    ...props
+  }: {
+    children: React.ReactNode;
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    size?: 'sm' | 'md' | 'lg';
+    className?: string;
+    [key: string]: any;
+  }) => {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
     
     const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
     
-    const variantClasses = {
+    const variantClasses: Record<string, string> = {
       primary: `bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500`,
       secondary: `${isDark ? 'bg-secondary-700 text-secondary-100 hover:bg-secondary-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'} focus:ring-secondary-500`,
       outline: `border ${isDark ? 'border-secondary-600 text-secondary-300 hover:bg-secondary-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'} focus:ring-primary-500`,
@@ -190,7 +199,7 @@ export const ThemeComponents = {
       danger: 'bg-error-600 text-white hover:bg-error-700 focus:ring-error-500',
     };
     
-    const sizeClasses = {
+    const sizeClasses: Record<string, string> = {
       sm: 'px-3 py-1.5 text-sm',
       md: 'px-4 py-2 text-sm',
       lg: 'px-6 py-3 text-base',

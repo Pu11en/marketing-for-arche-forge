@@ -14,13 +14,14 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    CUSTOM_KEY: process.env.CUSTOM_KEY || 'default-key-value',
   },
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
@@ -46,7 +47,6 @@ const nextConfig = {
   },
   // Enable experimental features
   experimental: {
-    appDir: true,
     serverComponentsExternalPackages: ['three'],
   },
   // Performance optimizations
